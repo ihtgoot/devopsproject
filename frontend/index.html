@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gemma Fine-Tune Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0f18;
+      --surface: #13162a;
+      --card: #1a1e35;
+      --border: #272b4a;
+      --accent: #6c63ff;
+      --accent2: #a78bfa;
+      --success: #22d3a5;
+      --warn: #f59e0b;
+      --danger: #f87171;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    header {
+      background: linear-gradient(135deg, #1a1e35 0%, #0d0f18 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+    }
+    .logo h1 { font-size: 1.1rem; font-weight: 600; }
+    .logo p { font-size: 0.7rem; color: var(--muted); }
+    .status-badge {
+      display: flex; align-items: center; gap: 0.5rem;
+      background: rgba(34,211,165,0.1);
+      border: 1px solid rgba(34,211,165,0.3);
+      border-radius: 20px;
+      padding: 0.35rem 0.9rem;
+      font-size: 0.75rem; color: var(--success);
+    }
+    .status-badge .dot { width:7px; height:7px; border-radius:50%; background:var(--success); animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* LAYOUT */
+    main { max-width: 1200px; margin: 2rem auto; padding: 0 1.5rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+
+    /* CARDS */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+    .card-title {
+      font-size: 0.8rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--muted); margin-bottom: 1.25rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .card-title span { font-size: 1rem; }
+
+    /* FORM */
+    label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 0.4rem; font-weight: 500; }
+    input[type=text], input[type=number], textarea {
+      width: 100%; background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.65rem 0.9rem;
+      color: var(--text); font-size: 0.875rem;
+      font-family: inherit; outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus { border-color: var(--accent); }
+    textarea { resize: vertical; min-height: 120px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+    .form-group { margin-bottom: 1rem; }
+
+    /* BUTTON */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 0.5rem; padding: 0.75rem 1.5rem;
+      border-radius: 8px; font-weight: 600; font-size: 0.875rem;
+      border: none; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; width: 100%; margin-top: 0.5rem; }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 20px rgba(108,99,255,0.4); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+    .btn-secondary:hover { border-color: var(--accent); }
+
+    /* JOBS TABLE */
+    .jobs-list { display: flex; flex-direction: column; gap: 0.75rem; }
+    .job-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.9rem 1.1rem;
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; transition: border-color 0.2s;
+    }
+    .job-item:hover { border-color: var(--accent); }
+    .job-id { font-family: monospace; font-size: 0.75rem; color: var(--accent2); }
+    .job-meta { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+    .badge {
+      padding: 0.2rem 0.6rem; border-radius: 20px;
+      font-size: 0.7rem; font-weight: 600; text-transform: uppercase;
+    }
+    .badge-queued  { background: rgba(100,116,139,0.2); color: var(--muted); }
+    .badge-running { background: rgba(245,158,11,0.15); color: var(--warn); }
+    .badge-completed { background: rgba(34,211,165,0.15); color: var(--success); }
+    .badge-failed  { background: rgba(248,113,113,0.15); color: var(--danger); }
+
+    /* PROGRESS */
+    .progress-bar-wrap { background: var(--surface); border-radius: 6px; height: 6px; margin-top: 0.5rem; overflow: hidden; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2)); border-radius: 6px; transition: width 0.5s; }
+
+    /* DETAIL PANEL */
+    .detail-panel { grid-column: 1 / -1; }
+    .detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+    .stat-card .val { font-size: 1.5rem; font-weight: 700; color: var(--accent2); }
+    .stat-card .lbl { font-size: 0.7rem; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* INFERENCE */
+    .inference-section { margin-top: 1rem; }
+    #inference-response {
+      margin-top: 0.75rem; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 1rem; font-size: 0.875rem; line-height: 1.6;
+      min-height: 80px; color: var(--accent2); white-space: pre-wrap;
+    }
+
+    /* EMPTY */
+    .empty { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.875rem; }
+    .empty span { font-size: 2rem; display: block; margin-bottom: 0.5rem; }
+
+    /* TOAST */
+    #toast {
+      position: fixed; bottom: 2rem; right: 2rem;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.9rem 1.25rem;
+      font-size: 0.85rem; box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      transform: translateY(100px); opacity: 0;
+      transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+      max-width: 320px; z-index: 1000;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+
+    /* SPINNER */
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 768px) { main { grid-template-columns: 1fr; } .detail-grid { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🧠</div>
+    <div>
+      <h1>Gemma Fine-Tune Platform</h1>
+      <p>DevOps ML Orchestration</p>
+    </div>
+  </div>
+  <div class="status-badge" id="api-status">
+    <span class="dot"></span> Checking API…
+  </div>
+</header>
+
+<main>
+
+  <!-- TRAIN FORM -->
+  <div class="card">
+    <div class="card-title"><span>🚀</span> Submit Training Job</div>
+    <div class="form-group">
+      <label for="dataset">Dataset (text to fine-tune on)</label>
+      <textarea id="dataset" placeholder="Paste your training text here...&#10;e.g., Q: What is Docker? A: Docker is a containerization platform..."></textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="epochs">Epochs</label>
+        <input type="number" id="epochs" value="1" min="1" max="10" />
+      </div>
+      <div class="form-group">
+        <label for="lr">Learning Rate</label>
+        <input type="number" id="lr" value="0.0001" step="0.00001" />
+      </div>
+    </div>
+    <button class="btn btn-primary" id="train-btn" onclick="submitJob()">
+      <span>⚡</span> Start Training
+    </button>
+  </div>
+
+  <!-- JOBS LIST -->
+  <div class="card">
+    <div class="card-title" style="justify-content:space-between">
+      <span><span>📋</span> Training Jobs</span>
+      <button class="btn btn-secondary" style="padding:0.3rem 0.8rem;font-size:0.75rem" onclick="loadJobs()">↻ Refresh</button>
+    </div>
+    <div id="jobs-list" class="jobs-list">
+      <div class="empty"><span>📭</span>No jobs yet. Submit one above.</div>
+    </div>
+  </div>
+
+  <!-- DETAIL PANEL -->
+  <div class="card detail-panel" id="detail-panel" style="display:none">
+    <div class="card-title"><span>🔍</span> Job Detail — <span id="detail-id" style="color:var(--accent2);text-transform:none;letter-spacing:0;font-size:0.8rem"></span></div>
+    <div class="detail-grid">
+      <div class="stat-card"><div class="val" id="d-status">—</div><div class="lbl">Status</div></div>
+      <div class="stat-card"><div class="val" id="d-progress">0%</div><div class="lbl">Progress</div></div>
+      <div class="stat-card"><div class="val" id="d-epoch">—</div><div class="lbl">Current Epoch</div></div>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar" id="d-bar" style="width:0%"></div></div>
+    <div id="d-error" style="margin-top:0.75rem;color:var(--danger);font-size:0.8rem;display:none"></div>
+
+    <div class="inference-section">
+      <div class="card-title" style="margin-top:1.5rem"><span>💬</span> Run Inference</div>
+      <div class="form-group">
+        <label for="inf-instruction">Instruction</label>
+        <input type="text" id="inf-instruction" placeholder="Ask the model something..." value="what is life ?" />
+      </div>
+      <button class="btn btn-primary" onclick="runInference()" style="width:auto;padding:0.65rem 1.25rem">
+        <span>▶</span> Ask Model
+      </button>
+      <div id="inference-response" style="display:none"></div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

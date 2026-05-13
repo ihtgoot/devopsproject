@@ -1,0 +1,60 @@
+version: '3.9'
+
+services:
+
+  frontend:
+    build: ./frontend
+    container_name: ml_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    networks:
+      - ml_net
+    restart: unless-stopped
+
+  api:
+    build: ./backend-go
+    container_name: ml_api
+    ports:
+      - "8080:8080"
+    environment:
+      - TRAINER_URL=http://trainer:8000
+      - DATA_DIR=/data/datasets
+      - PORT=8080
+    depends_on:
+      - trainer
+    volumes:
+      - model_store:/data
+    networks:
+      - ml_net
+    restart: unless-stopped
+
+  trainer:
+    build: ./trainer
+    container_name: ml_trainer
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+    volumes:
+      - model_store:/data
+    networks:
+      - ml_net
+    restart: unless-stopped
+    # Uncomment below if you have an NVIDIA GPU:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  model_store:
+    driver: local
+
+networks:
+  ml_net:
+    driver: bridge

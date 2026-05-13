@@ -1,0 +1,21 @@
+# Go
+backend-go/main
+backend-go/bin/
+
+# Python
+trainer/venv/
+trainer/__pycache__/
+trainer/*.pyc
+trainer/.pytest_cache/
+
+# Model artifacts (too large for git)
+trainer/models/
+trainer/outputs/
+data/
+
+# Docker
+*.log
+compose_logs.txt
+
+# OS
+.DS_Store
