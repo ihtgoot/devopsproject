@@ -1,27 +1,28 @@
-from flask import Flask, request, jsonify
-import threading
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from pydantic import BaseModel
 import uuid
 import time
 import os
+import uvicorn
 from train import run_training
 from unsloth import FastLanguageModel
 import torch
+from typing import Optional
 
-app = Flask(__name__)
+app = FastAPI()
 
 # Shared state for tracking training progress
 jobs = {}
 
-@app.route('/train', methods=['POST'])
-def train():
-    data = request.json
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-    
-    job_id = data.get('job_id', str(uuid.uuid4()))
-    dataset_path = data.get('dataset_path')
-    epochs = data.get('epochs', 1)
-    lr = data.get('lr', 1e-4)
+class TrainRequest(BaseModel):
+    job_id: Optional[str] = None
+    dataset_path: Optional[str] = None
+    epochs: Optional[int] = 1
+    lr: Optional[float] = 1e-4
+
+@app.post('/train', status_code=202)
+def train(req: TrainRequest, background_tasks: BackgroundTasks):
+    job_id = req.job_id or str(uuid.uuid4())
 
     jobs[job_id] = {
         "status": "queued",
@@ -29,34 +30,33 @@ def train():
         "start_time": time.time()
     }
 
-    # Start training in a separate thread to keep the API responsive
-    thread = threading.Thread(target=run_training, args=(job_id, dataset_path, epochs, lr, jobs))
-    thread.start()
+    # Start training in a background task to keep the API responsive
+    background_tasks.add_task(run_training, job_id, req.dataset_path, req.epochs, req.lr, jobs)
 
-    return jsonify({"job_id": job_id, "status": "queued"}), 202
+    return {"job_id": job_id, "status": "queued"}
 
-@app.route('/status/<job_id>', methods=['GET'])
-def status(job_id):
+@app.get('/status/{job_id}')
+def status(job_id: str):
     job = jobs.get(job_id)
     if not job:
-        return jsonify({"error": "Job not found"}), 404
-    return jsonify(job)
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
 
-@app.route('/inference', methods=['POST'])
-def inference():
-    data = request.json
-    model_name = data.get('model_id', "psychotic_uncle_lora")
-    instruction = data.get('instruction', "what is life ?")
-    
+class InferenceRequest(BaseModel):
+    model_id: Optional[str] = "psychotic_uncle_lora"
+    instruction: Optional[str] = "what is life ?"
+
+@app.post('/inference')
+def inference(req: InferenceRequest):
     try:
         model, tokenizer = FastLanguageModel.from_pretrained(
-            model_name = model_name,
+            model_name = req.model_id,
             max_seq_length = 1024,
             load_in_4bit = True,
         )
         FastLanguageModel.for_inference(model)
         
-        formatted_prompt = f"### Instruction:\n{instruction}\n\n### Response:\n"
+        formatted_prompt = f"### Instruction:\n{req.instruction}\n\n### Response:\n"
         inputs = tokenizer(formatted_prompt, return_tensors="pt").to("cuda")
         
         outputs = model.generate(
@@ -72,14 +72,14 @@ def inference():
         else:
             clean_response = response[len(formatted_prompt):].strip()
             
-        return jsonify({"response": clean_response})
+        return {"response": clean_response}
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.route('/health', methods=['GET'])
+@app.get('/health')
 def health():
-    return jsonify({"status": "up"}), 200
+    return {"status": "up"}
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8000))
-    app.run(host='0.0.0.0', port=port)
+    uvicorn.run(app, host='0.0.0.0', port=port)
