@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/user/devops-ml-orchestrator/internal/middleware"
 	"github.com/user/devops-ml-orchestrator/internal/models"
 	"github.com/user/devops-ml-orchestrator/internal/queue"
 )
@@ -28,21 +29,7 @@ func (h *Handler) RegisterRoutes(r *mux.Router) {
 	r.HandleFunc("/jobs", h.HandleListJobs).Methods("GET")
 	r.HandleFunc("/health", h.HandleHealth).Methods("GET")
 	r.HandleFunc("/inference", h.HandleInference).Methods("POST", "OPTIONS")
-	r.Use(corsMiddleware)
-}
-
-// corsMiddleware adds CORS headers for frontend
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+	r.Use(middleware.CORS)
 }
 
 // HandleTrain accepts dataset_text (raw text) or dataset_path, creates job
@@ -101,6 +88,40 @@ func (h *Handler) HandleStatus(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"Job not found"}`, http.StatusNotFound)
 		return
 	}
+
+	// Fetch real-time status from the Trainer
+	resp, err := http.Get(fmt.Sprintf("%s/status/%s", h.TrainerURL, id))
+	if err == nil && (resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusAccepted) {
+		var trainerStatus struct {
+			Status   string  `json:"status"`
+			Progress float64 `json:"progress"`
+			Error    string  `json:"error"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&trainerStatus); err == nil {
+			job.Status = models.JobStatus(trainerStatus.Status)
+			// We can attach progress dynamically if models.TrainingJob had it,
+			// or we can just proxy the trainer response directly if it matches the struct.
+			// Let's just pass the trainer response directly with merged fields.
+
+			// We'll write a custom JSON response combining both
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"id":            job.ID,
+				"dataset_path":  job.DatasetPath,
+				"epochs":        job.Epochs,
+				"learning_rate": job.LearningRate,
+				"status":        trainerStatus.Status,
+				"progress":      trainerStatus.Progress,
+				"error":         trainerStatus.Error,
+				"created_at":    job.CreatedAt,
+				"updated_at":    job.UpdatedAt,
+			})
+			resp.Body.Close()
+			return
+		}
+		resp.Body.Close()
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(job)
 }

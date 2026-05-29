@@ -1,5 +1,4 @@
 from unsloth import FastLanguageModel
-import torch
 
 # 1. Load the model and tokenizer
 # Point model_name to your LoRA folder (e.g., "psychotic_uncle_lora" or "outputs")

@@ -78,7 +78,7 @@ func (o *Orchestrator) processJob(job *models.TrainingJob) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
 		o.updateStatus(job.ID, models.StatusFailed, fmt.Sprintf("Trainer returned error: %d", resp.StatusCode))
 		return
 	}
