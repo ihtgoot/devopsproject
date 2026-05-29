@@ -20,3 +20,6 @@ compose_logs.txt
 # OS
 .DS_Store
 
+# Temporarily ignored
+Jenkinsfile
+README.md
