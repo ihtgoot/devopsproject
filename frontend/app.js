@@ -1,4 +1,4 @@
-const API = '/api';
+const API = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.port !== '' && window.location.port !== '80' ? 'http://localhost:8080' : '/api';
 let pollingInterval = null;
 let selectedJobId = null;
 

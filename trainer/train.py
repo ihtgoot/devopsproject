@@ -55,7 +55,7 @@ def run_training(job_id: str, dataset_path: str, epochs: int, lr: float, status_
         # 1 ─ Load base model
         logger.info(f"[{job_id}] Loading model…")
         model, tokenizer = FastLanguageModel.from_pretrained(
-            model_name="unsloth/gemma-3-4b-it-bnb-4bit",
+            model_name="unsloth/gemma-3-270m-it-bnb-4bit",
             max_seq_length=2048,
             load_in_4bit=True,
         )
@@ -78,7 +78,8 @@ def run_training(job_id: str, dataset_path: str, epochs: int, lr: float, status_
         logger.info(f"[{job_id}] Dataset loaded: {len(dataset)} examples")
 
         # 4 ─ Train
-        output_dir = f"/data/outputs/{job_id}"
+        data_dir = os.environ.get("DATA_DIR", "/data")
+        output_dir = os.path.join(data_dir, "outputs", job_id)
         os.makedirs(output_dir, exist_ok=True)
 
         trainer = SFTTrainer(
@@ -96,7 +97,8 @@ def run_training(job_id: str, dataset_path: str, epochs: int, lr: float, status_
                 num_train_epochs=epochs,
                 max_steps=max(10, epochs * len(dataset)),  # safety cap for demo
                 learning_rate=lr,
-                fp16=True,
+                fp16 = False,
+                bf16 = True,
                 logging_steps=1,
                 optim="adamw_8bit",
                 weight_decay=0.01,
@@ -107,21 +109,22 @@ def run_training(job_id: str, dataset_path: str, epochs: int, lr: float, status_
             ),
         )
 
-        # Patch progress into status_dict via a callback
-        total_steps = trainer.args.max_steps
-        original_log = trainer.log
+        # Use a TrainerCallback to report progress without overriding trainer.log
+        from transformers import TrainerCallback
 
-        def _log_with_progress(logs):
-            step = trainer.state.global_step
-            status_dict[job_id]["progress"] = round((step / total_steps) * 100, 1)
-            status_dict[job_id]["current_step"] = step
-            original_log(logs)
+        class ProgressCallback(TrainerCallback):
+            def on_log(self, args, state, control, logs=None, **kwargs):
+                # Update shared status dict with progress metrics
+                status_dict[job_id]["progress"] = round((state.global_step / state.total_steps ) * 100, 1)
+                status_dict[job_id]["current_step"] = state.global_step
+                return control
 
-        trainer.log = _log_with_progress
+        # Register the callback and start training
+        trainer.add_callback(ProgressCallback())
         trainer.train()
 
         # 5 ─ Save adapter
-        model_path = f"/data/models/{job_id}_lora"
+        model_path = os.path.join(data_dir, "models", f"{job_id}_lora")
         os.makedirs(model_path, exist_ok=True)
         model.save_pretrained(model_path)
         tokenizer.save_pretrained(model_path)

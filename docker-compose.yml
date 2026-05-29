@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
 
   frontend:
@@ -37,19 +35,14 @@ services:
       - "8000:8000"
     environment:
       - PORT=8000
+      - PYTHONPATH=/app/venv/lib/python3.12/site-packages
     volumes:
       - model_store:/data
+      - ./trainer:/app
     networks:
       - ml_net
     restart: unless-stopped
-    # Uncomment below if you have an NVIDIA GPU:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
+    gpus: all
 
 volumes:
   model_store:
